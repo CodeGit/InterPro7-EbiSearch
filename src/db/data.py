@@ -100,10 +100,12 @@ class InterProData:
             if result["short_name"]:
                 entry["fields"].append(self.createField("short_name", result["short_name"]))
             if result["description"]:
-                description = json.dumps(result["description"])
-                description = description.join("")
-                if len(description) > 0:
-                    entry["fields"].append(self.createField("description", description))
+                descriptionParagraphs = json.loads(result["description"])
+                descriptionText = " ".join(descriptionParagraphs)
+                for tag in ["<p>", "</p>"]:
+                    descriptionText = str.replace(descriptionText, tag, "")
+                if len(descriptionText) > 0:
+                    entry["fields"].append(self.createField("description", descriptionText))
             if result["entry_date"]:
                 entry["fields"].append(self.createField("created", result["entry_date"]))
             if result["type"]:
