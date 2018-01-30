@@ -19,13 +19,15 @@ def parseArguments(sysArgs):
                         help="path to config file",
                         required=True,
                         metavar="configfile")
+    parser.add_argument("-o", "--output",
+                        type=argparse.FileType('w'),
+                        help="output JSON file",
+                        default="ebisearch.json",
+                        metavar="configfile")
     parser.add_argument("-t", "--test",
                         default="0",
                         help="selects a number of random identifiers for testing output",
                         metavar="integer")
-    parser.add_argument("-o", "--output",
-                        help="destination directory for XML output file",
-                        metavar="output directory")
     parser.add_argument("-n", "--nocache",
                         action="store_true",
                         default=False,
@@ -82,31 +84,15 @@ def main():
             file.write(data)
     searchSchema = json.loads(data)
 
-
     db = InterProData(config)
     results = db.getResults(nocache=args.nocache)
-    entryObj = db.resultsToEntries(results)
+    entryDict = db.resultsToEntries(results)
 
     try:
-        validate(entryObj, searchSchema)
-
-        #validate({
-        #    'name': "test",
-        #    'release': "test",
-        #    'release_date': "2017-06-12",
-        #    'entry_count': 1,
-        #    'entries': [{
-        #        "fields": [
-        #            {
-        #                "name": "id",
-        #                "value": "asdadas"
-        #            }
-        #        ]
-        #    }]
-        #}, searchSchema)
-
+        validate(entryDict, searchSchema)
     except Exception as e:
-        print (e)
+        logger.error(e)
+    args.output.write(json.dumps(entryDict, indent=4, sort_keys=True))
 
 if __name__ == '__main__':
     scriptPath = path.dirname(path.abspath(__file__))
