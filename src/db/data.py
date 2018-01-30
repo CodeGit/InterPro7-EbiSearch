@@ -6,6 +6,7 @@ from urllib.parse import urljoin
 from urllib.parse import urlunparse
 from urllib.request import urlopen
 from random import shuffle
+import re
 import logging
 
 logger = logging.getLogger(__name__)
@@ -102,8 +103,10 @@ class InterProData:
             if result["description"]:
                 descriptionParagraphs = json.loads(result["description"])
                 descriptionText = " ".join(descriptionParagraphs)
-                for tag in ["<p>", "</p>"]:
-                    descriptionText = str.replace(descriptionText, tag, "")
+                #clean up descriptions
+                for pattern in [r"\[.*?\]", r"<.*?>", r"[\r|\n]+"]:
+                    p = re.compile(pattern)
+                    descriptionText = p.sub("", descriptionText)
                 if len(descriptionText) > 0:
                     entry["fields"].append(self.createField("description", descriptionText))
             if result["entry_date"]:
