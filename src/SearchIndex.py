@@ -25,7 +25,7 @@ def parseArguments(sysArgs):
                         default="ebisearch.json",
                         metavar="configfile")
     parser.add_argument("-t", "--test",
-                        default="0",
+                        default=0,
                         help="selects a number of random identifiers for testing output",
                         metavar="integer")
     parser.add_argument("-n", "--nocache",
@@ -39,7 +39,7 @@ def parseArguments(sysArgs):
     parser.add_argument("-v", "--validate",
                         action="store_true",
                         default=False,
-                        help="test that data will be converted to xml. This option removes invalid entries from the output")
+                        help="test that data will be converted to json")
     parser.add_argument("--verbose",
                         action="store_true",
                         default=False,
@@ -84,14 +84,19 @@ def main():
             file.write(data)
     searchSchema = json.loads(data)
 
+    limit = None
+    if int(args.test) > 0:
+        limit = int(args.test)
+
     db = InterProData(config)
     results = db.getResults(nocache=args.nocache)
-    entryDict = db.resultsToEntries(results)
+    entryDict = db.resultsToEntries(results, limit)
 
-    try:
-        validate(entryDict, searchSchema)
-    except Exception as e:
-        logger.error(e)
+    if args.validate:
+        try:
+            validate(entryDict, searchSchema)
+        except Exception as e:
+            logger.error(e)
     args.output.write(json.dumps(entryDict, indent=4, sort_keys=True))
 
 if __name__ == '__main__':

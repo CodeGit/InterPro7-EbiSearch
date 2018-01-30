@@ -82,9 +82,11 @@ class InterProData:
             result['entry_date'] = date
         return results
 
-    def resultsToEntries(self, results):
+    def resultsToEntries(self, results, limit):
         """Convert MySQL data to Entry dictionary ready for conversion to EbiSearch JSON"""
         entries = []
+        if limit != None:
+            results = results[:limit]
         for result in results:
             entry = {
                 "fields": [],
@@ -143,8 +145,8 @@ class InterProData:
         entryDict['entry_count'] = len(entries)
         self.addAnnotation(entryDict, self.config['api']['proteinPath'], "UNIPROT")
         self.addAnnotation(entryDict, self.config['api']['structurePath'], "PDB")
-        self.addAnnotation(entryDict, self.config['api']['setPath'], None)
         self.addAnnotation(entryDict, self.config['api']['organismPath'], "TAXONOMY")
+        self.addAnnotation(entryDict, self.config['api']['setPath'], None)
         return entryDict
 
     def convertChildrenToCrossReferences(self, entry, children):
@@ -167,8 +169,9 @@ class InterProData:
 
             while annotationCount < count:
                 urlPath = "/".join([basepath, sourceDB, accession])
+                urlPath += "/"
                 try:
-                    url = urlunparse(("http", host, urlPath, None, "page={0}&page_size={1}".format(pageNum, pageSize), None))
+                    url = urlunparse(("https", host, urlPath, None, "page={0}&page_size={1}".format(pageNum, pageSize), None))
                     response = urlopen(url)
                 except Exception as e:
                     logging.error("{0} [{1}]: {2} URL:{3}".format(accession, xrefName, e, url))
@@ -183,6 +186,7 @@ class InterProData:
                     annotationCount += 1
                 count = int(annotationData['count'])
                 pageNum += 1
+                logger.debug("Count={0} Payload={1} Total Processed={2} URL={3}".format(count, len(annotationData['results']), annotationCount, url))
 
     def getFieldValue(self, fields, name):
         for field in fields:
