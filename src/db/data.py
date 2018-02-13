@@ -3,7 +3,7 @@ import json
 from os import path
 from datetime import date
 from urllib.parse import urljoin
-from urllib.parse import urlunparse
+from urllib.parse import urlunparse, urlparse
 from urllib.request import urlopen
 from random import shuffle
 import re
@@ -83,12 +83,18 @@ class InterProData:
             result['entry_date'] = date
         return results
 
-    def resultsToEntries(self, results, limit):
+    def resultsToEntries(self, results, start=0, end=None, limit=None):
         """Convert MySQL data to Entry dictionary ready for conversion to EbiSearch JSON"""
         entries = []
+
         if limit != None:
             results = results[:limit]
+
+        if end != None:
+            results = results[start:end]
+
         for result in results:
+            logger.error("Processing {}".format(result['accession']))
             entry = {
                 "fields": [],
                 'cross_references': []
@@ -138,6 +144,7 @@ class InterProData:
 
             if result["integrated_id"]:
                 entry['cross_references'].append(self.createCrossRef("INTERPRO", result["integrated_id"]))
+            self.addElasticAnnotationToEntry(entry)
             entries.append(entry)
 
         #setup container object properties
@@ -148,10 +155,7 @@ class InterProData:
         entryDict["release_date"] = date.today().strftime("%Y-%m-%d")
         entryDict['entries'] = entries
         entryDict['entry_count'] = len(entries)
-        self.addAnnotation(entryDict, self.config['api']['proteinPath'], "UNIPROT")
-        self.addAnnotation(entryDict, self.config['api']['structurePath'], "PDB")
-        self.addAnnotation(entryDict, self.config['api']['organismPath'], "TAXONOMY")
-        self.addAnnotation(entryDict, self.config['api']['setPath'], None)
+
         return entryDict
 
     def convertChildrenToCrossReferences(self, entry, children):
@@ -160,6 +164,62 @@ class InterProData:
             if 'children' in child:
                 self.convertChildrenToCrossReferences(entry, child['children'])
 
+    def addElasticAnnotationToEntry(self, entry):
+        scheme = self.config["elastic"]["scheme"]
+        host = self.config["elastic"]["host"]
+        basePath = self.config["elastic"]["path"]
+        size = 20
+        SEPARATOR = "____"
+
+        accession = self.getFieldValue(entry['fields'], 'id').lower()
+        escapedAccession = re.sub(r"(\:)", r"\\1", accession)
+        sourceDB = self.getFieldValue(entry['fields'], 'source_database').lower()
+        processedCount = 0
+        hitCount = 1
+        xrefs = set()
+        logger.error("Annotating {}".format(accession))
+        while processedCount < hitCount:
+            query = "pretty&_source=true&from={0}&size={1}&default_operator=AND&q=entry_acc:{2}%20entry_db:{3}" \
+                .format(processedCount, size, escapedAccession, sourceDB)
+            try:
+                url = urlunparse((scheme, host, basePath, None, query, None))
+                response = urlopen(url)
+            except Exception as e:
+                logging.error("{0} [{1}]: {2} URL:{3}".format(accession, xrefName, e, url))
+                break
+            data = response.read().decode('utf-8')
+            annotationData = json.loads(data)
+            hits = annotationData['hits']['hits']
+            for hit in hits:
+                #ensure xrefs for a particular datatype are unique
+                if '_source' in hit:
+                    if 'protein_acc' in hit['_source'] and hit['_source']['protein_acc'] != None:
+                        acc = SEPARATOR.join(["UNIPROT", hit['_source']['protein_acc']])
+                        xrefs.add(acc)
+                    if 'structure_acc' in hit['_source'] and hit['_source']['structure_acc'] != None:
+                        acc = SEPARATOR.join(["PDBE", hit['_source']['structure_acc']])
+                        xrefs.add(acc)
+                    if 'set_acc' in hit['_source'] and hit['_source']['set_acc'] != None:
+                        for set_acc in  hit['_source']['set_acc']:
+                            acc = SEPARATOR.join([hit['_source']['set_db'].upper(), set_acc])
+                            xrefs.add(acc)
+                    if 'proteomes' in hit['_source'] and hit['_source']['proteomes'] != None:
+                        for proteome in  hit['_source']['proteomes']:
+                            acc = SEPARATOR.join(["PROTEOME", proteome])
+                            xrefs.add(acc)
+                    if 'lineage' in hit['_source'] and hit['_source']['lineage'] != None and len(hit['_source']['lineage']) > 0:
+                        taxids = hit['_source']['lineage']
+                        acc = SEPARATOR.join(["TAXONOMY", taxids[-1]])
+                        xrefs.add(acc)
+            for ref in xrefs:
+                (dbName, accession) = ref.split(SEPARATOR)
+                entry['cross_references'].append(self.createCrossRef(dbName, accession))
+            hitCount = annotationData['hits']['total']
+            processedCount += 1
+
+    def addElasticAnnotation(self, entrySet):
+        for entry in entrySet["entries"]:
+            self.addElasticAnnotationToEntry(entry)
 
     def addAnnotation(self, entrySet, basepath, xrefName):
         host = self.config['api']['host']

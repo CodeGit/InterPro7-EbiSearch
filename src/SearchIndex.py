@@ -20,10 +20,9 @@ def parseArguments(sysArgs):
                         required=True,
                         metavar="configfile")
     parser.add_argument("-o", "--output",
-                        type=argparse.FileType('w'),
-                        help="output JSON file",
-                        default="ebisearch.json",
-                        metavar="configfile")
+                        help="output prefix name for JSON file",
+                        default="ebisearch",
+                        metavar="string")
     parser.add_argument("-t", "--test",
                         default=0,
                         help="selects a number of random identifiers for testing output",
@@ -84,20 +83,32 @@ def main():
             file.write(data)
     searchSchema = json.loads(data)
 
-    limit = None
-    if int(args.test) > 0:
-        limit = int(args.test)
 
     db = InterProData(config)
     results = db.getResults(nocache=args.nocache)
-    entryDict = db.resultsToEntries(results, limit)
 
-    if args.validate:
-        try:
-            validate(entryDict, searchSchema)
-        except Exception as e:
-            logger.error(e)
-    args.output.write(json.dumps(entryDict, indent=4, sort_keys=True))
+    if int(args.test) > 0:
+        limit = int(args.test)
+    else:
+        limit = len(results)
+    if 'recordsPerFile' in config:
+        step = config['recordsPerFile']
+
+    for start in range(0, limit, step):
+        end = start+step
+        filename = args.output + "_{0}_{1}.json".format(start, end)
+
+        entryDict = db.resultsToEntries(results, start=start, end=end, limit=limit)
+        outfile = open(filename, "w")
+
+        if args.validate:
+            try:
+                validate(entryDict, searchSchema)
+            except Exception as e:
+                logger.error(e)
+
+        logger.error("Writing Start {0} End {1} Limit {2} to {3}".format(start, end, limit, filename))
+        outfile.write(json.dumps(entryDict, indent=4, sort_keys=True))
 
 if __name__ == '__main__':
     scriptPath = path.dirname(path.abspath(__file__))
