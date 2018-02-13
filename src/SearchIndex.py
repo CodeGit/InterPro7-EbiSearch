@@ -1,6 +1,6 @@
 import argparse
 import logging
-from os import path
+from os import path, makedirs
 import sys
 import datetime
 import random
@@ -22,6 +22,10 @@ def parseArguments(sysArgs):
     parser.add_argument("-o", "--output",
                         help="output prefix name for JSON file",
                         default="ebisearch",
+                        metavar="string")
+    parser.add_argument("-d", "--dir",
+                        help="output directory for JSON file",
+                        default="ebisearch_json",
                         metavar="string")
     parser.add_argument("-t", "--test",
                         default=0,
@@ -95,12 +99,15 @@ def main():
     if 'recordsPerFile' in config:
         step = config['recordsPerFile']
 
+    if not path.exists(args.dir):
+        makedirs(args.dir)
+
     for start in range(0, limit, step):
         end = start+step
         filename = args.output + "_{0}_{1}.json".format(start, end)
-
+        filepath = path.join(args.dir, filename)
         entryDict = db.resultsToEntries(results, start=start, end=end, limit=limit)
-        outfile = open(filename, "w")
+        outfile = open(filepath, "w")
 
         if args.validate:
             try:
@@ -108,7 +115,7 @@ def main():
             except Exception as e:
                 logger.error(e)
 
-        logger.info("Writing Start {0} End {1} Limit {2} to {3}".format(start, end, limit, filename))
+        logger.info("Writing Start {0} End {1} Limit {2} to {3}".format(start, end, limit, filepath))
         outfile.write(json.dumps(entryDict, indent=4, sort_keys=True))
 
 if __name__ == '__main__':
