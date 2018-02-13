@@ -52,7 +52,8 @@ def prepareLogger(args):
     logFormat = "%(asctime)s %(name)s: %(funcName)s: %(levelname)s: %(message)s"
     logLevel = logging.WARN
     if args.verbose:
-        logLevel = logging.INFO
+        logLevel = logging.DEBUG
+    pass
 
     try:
         logfile = "interpro7-ebisearch.log"
@@ -107,7 +108,7 @@ def main():
             except Exception as e:
                 logger.error(e)
 
-        logger.error("Writing Start {0} End {1} Limit {2} to {3}".format(start, end, limit, filename))
+        logger.info("Writing Start {0} End {1} Limit {2} to {3}".format(start, end, limit, filename))
         outfile.write(json.dumps(entryDict, indent=4, sort_keys=True))
 
 if __name__ == '__main__':

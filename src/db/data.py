@@ -94,7 +94,7 @@ class InterProData:
             results = results[start:end]
 
         for result in results:
-            logger.error("Processing {}".format(result['accession']))
+            logger.info("Processing {}".format(result['accession']))
             entry = {
                 "fields": [],
                 'cross_references': []
@@ -177,7 +177,7 @@ class InterProData:
         processedCount = 0
         hitCount = 1
         xrefs = set()
-        logger.error("Annotating {}".format(accession))
+        logger.info("Annotating {}".format(accession))
         while processedCount < hitCount:
             query = "pretty&_source=true&from={0}&size={1}&default_operator=AND&q=entry_acc:{2}%20entry_db:{3}" \
                 .format(processedCount, size, escapedAccession, sourceDB)
@@ -185,7 +185,7 @@ class InterProData:
                 url = urlunparse((scheme, host, basePath, None, query, None))
                 response = urlopen(url)
             except Exception as e:
-                logging.error("{0} [{1}]: {2} URL:{3}".format(accession, xrefName, e, url))
+                logging.error("{0}: {2} URL:{3}".format(accession, e, url))
                 break
             data = response.read().decode('utf-8')
             annotationData = json.loads(data)
