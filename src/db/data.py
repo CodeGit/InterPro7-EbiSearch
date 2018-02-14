@@ -185,7 +185,7 @@ class InterProData:
                 url = urlunparse((scheme, host, basePath, None, query, None))
                 response = urlopen(url)
             except Exception as e:
-                logging.error("{0}: {2} URL:{3}".format(accession, e, url))
+                logging.error("{0}: {1} URL:{2}".format(accession, e, url))
                 break
             data = response.read().decode('utf-8')
             annotationData = json.loads(data)

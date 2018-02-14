@@ -122,3 +122,4 @@ if __name__ == '__main__':
     scriptPath = path.dirname(path.abspath(__file__))
     sys.path.append(scriptPath)
     main()
+    #bsub -M 65536 -q production-rh7 -u maq@ebi.ac.uk /nfs/production/interpro/interpro7/ebisearch/python/bin/python3 /nfs/production/interpro/interpro7/ebisearch/dev/src/SearchIndex.py -lv --verbose -c /nfs/production/interpro/interpro7/ebisearch/dev/config/ebi-config.json -d /nfs/production/interpro/interpro7/ebisearch_data/dev/
