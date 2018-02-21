@@ -116,7 +116,7 @@ class InterProData:
                 if len(descriptionText) > 0:
                     entry["fields"].append(self.createField("description", descriptionText))
             if result["entry_date"]:
-                entry["fields"].append(self.createField("created", result["entry_date"]))
+                entry["fields"].append(self.createField("creation_date", result["entry_date"]))
             if result["type"]:
                 entry["fields"].append(self.createField("type", result["type"]))
             #add all the cross references present in the entry table
